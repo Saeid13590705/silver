@@ -263,7 +263,7 @@ class SilverPriceTracker:
             new_rate = st.number_input(
                 "نرخ دلار (ریال)",
                 min_value=100000,
-                max_value=1000000,
+                max_value=2000000,
                 value=st.session_state.exchange_rate,
                 step=10000
             )
