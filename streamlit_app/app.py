@@ -1,11 +1,10 @@
 """
 📈 ردیاب قیمت نقره - جهانی و ایران
-نسخه Streamlit Cloud بدون نیاز به دیتابیس
+نسخه Streamlit Cloud بدون plotly
 """
 
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import requests
 from bs4 import BeautifulSoup
@@ -26,7 +25,6 @@ st.set_page_config(
 # استایل سفارشی
 st.markdown("""
 <style>
-    /* هدر اصلی */
     .main-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 2rem;
@@ -37,7 +35,6 @@ st.markdown("""
         box-shadow: 0 10px 20px rgba(0,0,0,0.1);
     }
     
-    /* کارت قیمت */
     .price-card {
         padding: 1.5rem;
         border-radius: 12px;
@@ -60,7 +57,6 @@ st.markdown("""
         border-top: 4px solid #10b981;
     }
     
-    /* دکمه‌ها */
     .stButton > button {
         width: 100%;
         border-radius: 8px;
@@ -71,44 +67,6 @@ st.markdown("""
     
     .stButton > button:hover {
         transform: scale(1.02);
-    }
-    
-    /* متریک‌ها */
-    .stMetric {
-        background: #f8fafc;
-        padding: 1rem;
-        border-radius: 8px;
-        border-left: 4px solid #3b82f6;
-    }
-    
-    /* تب‌ها */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 2rem;
-        background-color: #f1f5f9;
-        padding: 0.5rem;
-        border-radius: 10px;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 8px;
-        padding: 0.5rem 1.5rem;
-        font-weight: 600;
-    }
-    
-    /* اسپینر */
-    .stSpinner > div {
-        border-color: #3b82f6;
-    }
-    
-    /* اطلاعات پایین */
-    .footer {
-        margin-top: 3rem;
-        padding: 1rem;
-        background: #f8fafc;
-        border-radius: 10px;
-        text-align: center;
-        font-size: 0.9rem;
-        color: #64748b;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -152,11 +110,9 @@ class SilverPriceTracker:
         
         # هدرهای مرورگر
         self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.5',
-            'Accept-Encoding': 'gzip, deflate',
-            'Connection': 'keep-alive',
         }
         
         # مقداردهی اولیه session state
@@ -178,32 +134,9 @@ class SilverPriceTracker:
         if 'exchange_rate' not in st.session_state:
             st.session_state.exchange_rate = 500000  # نرخ دلار پیش‌فرض (ریال)
     
-    def _extract_number(self, text: str) -> Optional[float]:
-        """استخراج عدد از متن"""
-        if not text:
-            return None
-        
-        try:
-            # حذف کاراکترهای غیرعددی
-            cleaned = re.sub(r'[^\d.,-]', '', text)
-            cleaned = cleaned.replace(',', '')
-            
-            # تبدیل اعشار
-            if '.' in cleaned and cleaned.count('.') == 1:
-                pass  # فرمت آمریکایی
-            elif ',' in cleaned and cleaned.count(',') == 1:
-                cleaned = cleaned.replace(',', '.')  # فرمت اروپایی
-            
-            return float(cleaned) if cleaned else None
-        except:
-            return None
-    
     def fetch_investing_price(self, url: str) -> Optional[Dict]:
         """دریافت قیمت از Investing.com"""
         try:
-            # در نسخه واقعی، از requests و BeautifulSoup استفاده کنید
-            # اینجا برای نمونه، داده ساختگی برمی‌گردانیم
-            
             # شبیه‌سازی تغییرات قیمت
             base_price = 23.50
             variation = (datetime.now().minute % 30) * 0.01
@@ -248,7 +181,7 @@ class SilverPriceTracker:
             current_price = base_price + variation
             
             # محاسبه معادل دلاری
-            usd_price = (current_price * 10) / st.session_state.exchange_rate  # تومان به ریال، سپس به دلار
+            usd_price = (current_price * 10) / st.session_state.exchange_rate
             
             return {
                 'price': round(current_price, 0),
@@ -324,9 +257,9 @@ class SilverPriceTracker:
                 }
                 st.session_state.history.append(history_entry)
                 
-                # محدود کردن تاریخچه به 100 رکورد
-                if len(st.session_state.history) > 100:
-                    st.session_state.history = st.session_state.history[-100:]
+                # محدود کردن تاریخچه به 50 رکورد
+                if len(st.session_state.history) > 50:
+                    st.session_state.history = st.session_state.history[-50:]
             
             return True
             
@@ -481,126 +414,72 @@ class SilverPriceTracker:
         else:
             st.info("💡 برای مشاهده قیمت ایران، دکمه به‌روزرسانی را بزنید")
     
-    def display_charts(self):
-        """نمایش نمودارها"""
+    def display_charts_simple(self):
+        """نمایش نمودار ساده با استفاده از st.line_chart"""
         if len(st.session_state.history) < 2:
             return
         
         st.markdown("---")
-        st.subheader("📊 نمودار تغییرات قیمت")
-        
-        # ایجاد تب‌ها برای نمودارهای مختلف
-        tab1, tab2, tab3 = st.tabs(["📈 نمودار کلی", "🌍 قیمت جهانی", "🇮🇷 قیمت ایران"])
+        st.subheader("📊 تاریخچه قیمت‌ها")
         
         history_df = pd.DataFrame(st.session_state.history)
+        history_df['timestamp'] = pd.to_datetime(history_df['timestamp'])
+        history_df.set_index('timestamp', inplace=True)
+        
+        # تب‌ها برای نمایش مختلف
+        tab1, tab2, tab3 = st.tabs(["📈 نمودار ترکیبی", "🌍 قیمت جهانی", "🇮🇷 قیمت ایران"])
         
         with tab1:
-            # نمودار ترکیبی
-            fig1 = go.Figure()
+            # نمودار ترکیبی با دو محور
+            st.markdown("**روند تغییرات قیمت:**")
             
-            # خط قیمت جهانی
-            fig1.add_trace(go.Scatter(
-                x=history_df['timestamp'],
-                y=history_df['global_avg'],
-                mode='lines+markers',
-                name='قیمت جهانی (دلار/اونس)',
-                line=dict(color='#3b82f6', width=3),
-                marker=dict(size=6),
-                yaxis='y'
-            ))
+            # ایجاد دو ستون برای نمودارهای جداگانه
+            col1, col2 = st.columns(2)
             
-            # خط قیمت ایران (نرمال‌شده)
-            iran_normalized = history_df['iran_avg'] / 1000  # تقسیم بر 1000 برای مقیاس بهتر
-            fig1.add_trace(go.Scatter(
-                x=history_df['timestamp'],
-                y=iran_normalized,
-                mode='lines+markers',
-                name='قیمت ایران (هزار تومان/گرم)',
-                line=dict(color='#10b981', width=3),
-                marker=dict(size=6),
-                yaxis='y2'
-            ))
+            with col1:
+                st.markdown("**قیمت جهانی (دلار)**")
+                if 'global_avg' in history_df.columns:
+                    st.line_chart(history_df['global_avg'])
             
-            fig1.update_layout(
-                title='روند تغییرات قیمت نقره',
-                xaxis_title='زمان',
-                yaxis=dict(
-                    title='قیمت جهانی (دلار)',
-                    titlefont=dict(color='#3b82f6'),
-                    tickfont=dict(color='#3b82f6'),
-                    gridcolor='lightgray'
-                ),
-                yaxis2=dict(
-                    title='قیمت ایران (هزار تومان)',
-                    titlefont=dict(color='#10b981'),
-                    tickfont=dict(color='#10b981'),
-                    overlaying='y',
-                    side='right',
-                    gridcolor='lightgray'
-                ),
-                hovermode='x unified',
-                plot_bgcolor='white',
-                height=500,
-                showlegend=True,
-                legend=dict(
-                    yanchor="top",
-                    y=0.99,
-                    xanchor="left",
-                    x=0.01
-                )
-            )
+            with col2:
+                st.markdown("**قیمت ایران (تومان)**")
+                if 'iran_avg' in history_df.columns:
+                    st.line_chart(history_df['iran_avg'])
             
-            st.plotly_chart(fig1, use_container_width=True)
+            # جدول داده‌ها
+            st.markdown("**جدول داده‌های تاریخی:**")
+            display_df = history_df.reset_index()
+            display_df['timestamp'] = display_df['timestamp'].dt.strftime('%H:%M:%S')
+            display_df.columns = ['زمان', 'قیمت جهانی (دلار)', 'قیمت ایران (تومان)']
+            st.dataframe(display_df, use_container_width=True, height=300)
         
         with tab2:
-            # نمودار قیمت جهانی
-            fig2 = go.Figure()
-            
-            fig2.add_trace(go.Scatter(
-                x=history_df['timestamp'],
-                y=history_df['global_avg'],
-                mode='lines+markers',
-                name='قیمت جهانی',
-                line=dict(color='#3b82f6', width=3),
-                fill='tozeroy',
-                fillcolor='rgba(59, 130, 246, 0.1)'
-            ))
-            
-            fig2.update_layout(
-                title='روند قیمت جهانی نقره',
-                xaxis_title='زمان',
-                yaxis_title='قیمت (دلار/اونس)',
-                hovermode='x unified',
-                plot_bgcolor='white',
-                height=400
-            )
-            
-            st.plotly_chart(fig2, use_container_width=True)
+            if 'global_avg' in history_df.columns:
+                st.line_chart(history_df['global_avg'])
+                
+                # آمار قیمت جهانی
+                st.markdown("**آمار قیمت جهانی:**")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("میانگین", f"${history_df['global_avg'].mean():.2f}")
+                with col2:
+                    st.metric("حداکثر", f"${history_df['global_avg'].max():.2f}")
+                with col3:
+                    st.metric("حداقل", f"${history_df['global_avg'].min():.2f}")
         
         with tab3:
-            # نمودار قیمت ایران
-            fig3 = go.Figure()
-            
-            fig3.add_trace(go.Scatter(
-                x=history_df['timestamp'],
-                y=history_df['iran_avg'],
-                mode='lines+markers',
-                name='قیمت ایران',
-                line=dict(color='#10b981', width=3),
-                fill='tozeroy',
-                fillcolor='rgba(16, 185, 129, 0.1)'
-            ))
-            
-            fig3.update_layout(
-                title='روند قیمت نقره در ایران',
-                xaxis_title='زمان',
-                yaxis_title='قیمت (تومان/گرم)',
-                hovermode='x unified',
-                plot_bgcolor='white',
-                height=400
-            )
-            
-            st.plotly_chart(fig3, use_container_width=True)
+            if 'iran_avg' in history_df.columns:
+                st.line_chart(history_df['iran_avg'])
+                
+                # آمار قیمت ایران
+                st.markdown("**آمار قیمت ایران:**")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("میانگین", f"{history_df['iran_avg'].mean():,.0f} تومان")
+                with col2:
+                    st.metric("حداکثر", f"{history_df['iran_avg'].max():,.0f} تومان")
+                with col3:
+                    st.metric("حداقل", f"{history_df['iran_avg'].min():,.0f} تومان")
     
     def display_statistics(self):
         """نمایش آمار"""
@@ -649,7 +528,7 @@ class SilverPriceTracker:
             with col1:
                 st.markdown("**آمار قیمت جهانی**")
                 stat_data = {
-                    'منبع': ['میانگین', 'حداقل', 'حداکثر', 'تعداد منابع'],
+                    'شاخص': ['میانگین', 'حداقل', 'حداکثر', 'تعداد منابع'],
                     'مقدار': [
                         f"${stats['global']['average']:.2f}",
                         f"${stats['global']['min']:.2f}",
@@ -662,7 +541,7 @@ class SilverPriceTracker:
             with col2:
                 st.markdown("**آمار قیمت ایران**")
                 stat_data = {
-                    'منبع': ['میانگین', 'حداقل', 'حداکثر', 'تعداد منابع'],
+                    'شاخص': ['میانگین', 'حداقل', 'حداکثر', 'تعداد منابع'],
                     'مقدار': [
                         f"{stats['iran']['average']:,.0f} تومان",
                         f"{stats['iran']['min']:,.0f} تومان",
@@ -676,21 +555,21 @@ class SilverPriceTracker:
         """نمایش نوار کناری"""
         with st.sidebar:
             # لوگو و عنوان
-            st.image("https://cdn-icons-png.flaticon.com/512/3135/3135715.png", width=100)
-            st.title("💰 ردیاب نقره")
+            st.markdown("<h1 style='text-align: center;'>💰</h1>", unsafe_allow_html=True)
+            st.title("ردیاب نقره")
             st.markdown("---")
             
             # اطلاعات پروژه
             st.markdown("""
             ### 📱 درباره اپلیکیشن
             
-            این اپلیکیشن قیمت لحظه‌ای نقره را از منابع معتبر جهانی و ایرانی نمایش می‌دهد.
+            نمایش قیمت لحظه‌ای نقره از منابع معتبر.
             
             **قابلیت‌ها:**
             ✅ قیمت جهانی به دلار  
             ✅ قیمت ایران به تومان  
-            ✅ نمودار تغییرات قیمت  
-            ✅ آمار و تحلیل بازار  
+            ✅ نمودار تغییرات  
+            ✅ آمار بازار  
             ✅ به‌روزرسانی لحظه‌ای
             """)
             
@@ -713,13 +592,13 @@ class SilverPriceTracker:
             # بازه زمانی نمودار
             if st.session_state.history:
                 history_count = len(st.session_state.history)
-                max_history = min(100, history_count)
+                max_history = min(50, history_count)
                 chart_points = st.slider(
                     "تعداد نقاط نمودار",
                     min_value=5,
                     max_value=max_history,
-                    value=min(30, max_history),
-                    help="تعداد نقاط تاریخی برای نمایش در نمودار"
+                    value=min(20, max_history),
+                    help="تعداد نقاط تاریخی برای نمایش"
                 )
                 
                 if chart_points < history_count:
@@ -731,48 +610,32 @@ class SilverPriceTracker:
             st.markdown("### ℹ️ اطلاعات فنی")
             
             if st.session_state.prices['last_update']:
-                st.info(f"**آخرین به‌روزرسانی:**\n{st.session_state.prices['last_update'].strftime('%Y-%m-%d %H:%M:%S')}")
+                st.info(f"**آخرین به‌روزرسانی:**\n{st.session_state.prices['last_update'].strftime('%H:%M:%S')}")
             
-            st.metric("تعداد رکوردهای تاریخی", len(st.session_state.history))
+            st.metric("رکوردهای تاریخی", len(st.session_state.history))
             
             # راهنمای واحدها
             with st.expander("📖 راهنمای واحدها"):
                 st.markdown("""
                 **واحدهای قیمت:**
-                - 🇺🇸 **جهانی:** دلار آمریکا به ازای هر اونس (31.1035 گرم)
-                - 🇮🇷 **ایران:** تومان به ازای هر گرم
+                - 🇺🇸 **جهانی:** دلار/اونس (31.1035 گرم)
+                - 🇮🇷 **ایران:** تومان/گرم
                 
-                **محاسبه معادل:**
+                **محاسبه:**
                 ```
                 قیمت ایران به دلار = (قیمت تومان × 10) ÷ نرخ دلار
                 ```
-                
-                **پریمیوم بازار:**
-                درصد تفاوت قیمت ایران با قیمت جهانی پس از تبدیل ارز
                 """)
-            
-            st.markdown("---")
-            
-            # لینک‌ها
-            st.markdown("### 🔗 لینک‌های مفید")
-            st.markdown("""
-            - [🔗 Investing.com](https://www.investing.com/commodities/silver)
-            - [🔗 Kitco](https://www.kitco.com/charts/livesilver.html)
-            - [🔗 TGJU](https://www.tgju.org/)
-            - [🔗 نرخ‌یاب](https://www.nakhyab.com/)
-            """)
     
     def display_footer(self):
         """نمایش فوتر"""
         st.markdown("---")
         
         st.markdown("""
-        <div class="footer">
-            <p>💰 <strong>ردیاب قیمت نقره</strong> - نسخه Streamlit Cloud</p>
-            <p>⚠️ توجه: داده‌ها فقط در طول session فعلی مرورگر ذخیره می‌شوند.</p>
-            <p style="font-size: 0.8rem; margin-top: 1rem;">
-                توسعه‌یافته با ❤️ و Python | 
-                برای استفاده آموزشی و اطلاعاتی
+        <div style='text-align: center; padding: 1rem; background: #f8fafc; border-radius: 10px;'>
+            <p>💰 <strong>ردیاب قیمت نقره</strong> - نسخه Streamlit</p>
+            <p style='font-size: 0.9rem; color: #64748b;'>
+                توسعه‌یافته با Python | برای استفاده آموزشی
             </p>
         </div>
         """, unsafe_allow_html=True)
@@ -795,7 +658,7 @@ class SilverPriceTracker:
         self.display_statistics()
         
         # نمایش نمودارها
-        self.display_charts()
+        self.display_charts_simple()
         
         # نمایش فوتر
         self.display_footer()
