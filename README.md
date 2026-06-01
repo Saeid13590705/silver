@@ -21,5 +21,9 @@
 ### 1. کلون پروژه
 
 ```bash
-git clone https://github.com/username/silver-price-streamlit.git
-cd silver-price-streamlit
+https://github.com/Saeid13590705/silver.git
+cd silver-price-streamlit 
+pip install -r requirements.txt
+streamlit run streamlit_app/app.py
+
+
